@@ -12,9 +12,6 @@ def login():
 
     accountDb = dbConnect('account')
     loginDb = dbConnect('loginRecord')
-
-    if request.method == 'POST':
-        print('post')
     
     uid = request.get_json()['uid']
     password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
@@ -58,5 +55,56 @@ def login():
     
 @account.route('/logout', methods = ['POST'])
 def logout():
+    expiresDays = 30
 
-    return 0
+    loginDb = dbConnect('loginRecord')
+    
+    uid = request.get_json()['uid']
+    tokenHash = hashlib.md5(request.get_json()['token'].encode('utf-8')).hexdigest()
+
+    query = {
+        'uid': uid,
+        'tokenHash': tokenHash,
+    }
+
+    record = loginDb.find_one(query, {"_id": 0})
+
+    if record is not None:
+        loginDays = (datetime.today()-record['loginDate']).days
+
+        if loginDays > expiresDays:
+            data = {
+                'state': 'token expires',
+                'stateMessage': '此登入過期',
+                'date': record['loginDate']
+            }
+            return data
+        
+        if record['isLogin'] == True:
+            logoutAll(uid)
+
+            data = {
+                'state': 'success',
+                'stateMessage': '登出成功'
+            }
+
+            return data
+        else:
+            data = {
+                'state': 'token invalid',
+                'stateMessage': '此登入狀態無效'
+            }
+            return data
+    else:
+        data = {
+                'state': 'none login',
+                'stateMessage': '無此登入記錄'
+            }
+        return data
+
+# 登出所有裝置
+def logoutAll(uid):
+    loginDb = dbConnect('loginRecord')
+
+    allLoginData = loginDb.update_many({'uid': uid}, {'$set': {'isLogin': False}})
+    print(uid, allLoginData.modified_count, "documents of loginRecord updated")
