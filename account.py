@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 import hashlib, os
 
-import time
+from datetime import datetime
 
 from dbConnection import dbConnect
 
@@ -20,27 +20,29 @@ def login():
     password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
 
     query = {"uid": uid}
-    record = accountDb.find(query)
+    record = accountDb.find_one(query, {'_id': 0})
 
-    dbData = {}
-    for d in record:
-        dbData.update(d)
-
-    if dbData['password'] == password:
+    if record['password'] == password:
         print('uid login')
         token = hashlib.sha1(os.urandom(24)).hexdigest()
-        loginDb.insert_one({'tokenHash': hashlib.md5(token.encode('utf-8')).hexdigest(), 'uid': uid, 'time': time.time()})
+
+        logoutAll(uid)
+        loginDb.insert_one({
+            'tokenHash': hashlib.md5(token.encode('utf-8')).hexdigest(),
+            'uid': uid,
+            'loginDate': datetime.today().replace(microsecond = 0),
+            'isLogin': True
+        })
 
         data = {
             'token': token,
-            'name': dbData['name'], 
-            'birthday': dbData['birthday'],
-            'phone': dbData['phone'],
-            'memberLevel': dbData['memberLevel'],
-            'mail': dbData['mail']
+            'name': record['name'], 
+            'birthday': record['birthday'],
+            'phone': record['phone'],
+            'memberLevel': record['memberLevel'],
+            'mail': record['mail']
         }
 
-        print(data) 
         return jsonify(data)
     
     else:
