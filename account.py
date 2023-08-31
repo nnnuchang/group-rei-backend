@@ -12,7 +12,7 @@ def login():
 
     accountDb = dbConnect('account')
     loginDb = dbConnect('loginRecord')
-    
+
     uid = request.get_json()['uid']
     password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
 
@@ -33,7 +33,7 @@ def login():
 
         data = {
             'token': token,
-            'name': record['name'], 
+            'name': record['name'],
             'birthday': record['birthday'],
             'phone': record['phone'],
             'memberLevel': record['memberLevel'],
@@ -41,7 +41,7 @@ def login():
         }
 
         return jsonify(data)
-    
+
     else:
         return jsonify(
             {
@@ -49,16 +49,14 @@ def login():
                 "failedMsg": "登入失敗"
             }
         )
-    
-   
 
-    
+
 @account.route('/logout', methods = ['POST'])
 def logout():
     expiresDays = 30
 
     loginDb = dbConnect('loginRecord')
-    
+
     uid = request.get_json()['uid']
     tokenHash = hashlib.md5(request.get_json()['token'].encode('utf-8')).hexdigest()
 
@@ -79,7 +77,7 @@ def logout():
                 'date': record['loginDate']
             }
             return data
-        
+
         if record['isLogin'] == True:
             logoutAll(uid)
 
@@ -101,6 +99,44 @@ def logout():
                 'stateMessage': '無此登入記錄'
             }
         return data
+
+@account.route("/signup", methods = ['POST'])
+def signup():
+    uid =  request.get_json()['uid']
+    name = request.get_json()['name']
+    email = request.get_json()['email']
+    phone = request.get_json()['phone']
+    birthday = datetime.strptime(
+        request.get_json()['birthday'], '%Y-%m-%d'
+    )
+    password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
+
+    insertData = {
+        'uid': uid,
+        'name': name,
+        'password': password,
+        'email': email,
+        'birthday': birthday,
+        'phone': phone,
+        'member_level': 0
+    }
+
+    try:
+        accountDb = dbConnect('account')
+
+        print(insertData)
+        accountDb.insert_one(insertData)
+        data = {
+            'state': 'success',
+            'stateMessage': '註冊成功'
+        }
+    except:
+        data = {
+            'state': 'failed',
+            'stateMessage': '註冊失敗'
+        }
+
+    return jsonify(data)
 
 # 登出所有裝置
 def logoutAll(uid):
