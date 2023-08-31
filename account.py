@@ -13,7 +13,7 @@ def login():
     accountDb = dbConnect('account')
     loginDb = dbConnect('loginRecord')
 
-    uid = request.get_json()['uid']
+    uid = request.get_json()['uid'].lower()
     password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
 
     query = {"uid": uid}
@@ -57,7 +57,7 @@ def logout():
 
     loginDb = dbConnect('loginRecord')
 
-    uid = request.get_json()['uid']
+    uid = request.get_json()['uid'].lower()
     tokenHash = hashlib.md5(request.get_json()['token'].encode('utf-8')).hexdigest()
 
     query = {
@@ -76,7 +76,7 @@ def logout():
                 'stateMessage': '此登入過期',
                 'date': record['loginDate']
             }
-            return data
+            return jsonify(data)
 
         if record['isLogin'] == True:
             logoutAll(uid)
@@ -85,24 +85,22 @@ def logout():
                 'state': 'success',
                 'stateMessage': '登出成功'
             }
-
-            return data
         else:
             data = {
                 'state': 'token invalid',
                 'stateMessage': '此登入狀態無效'
             }
-            return data
     else:
         data = {
                 'state': 'none login',
                 'stateMessage': '無此登入記錄'
             }
-        return data
 
-@account.route("/signup", methods = ['POST'])
+    return jsonify(data)
+
+@account.route('/signup', methods = ['POST'])
 def signup():
-    uid =  request.get_json()['uid']
+    uid =  request.get_json()['uid'].lower()
     name = request.get_json()['name']
     email = request.get_json()['email']
     phone = request.get_json()['phone']
@@ -137,6 +135,26 @@ def signup():
         }
 
     return jsonify(data)
+
+@account.route('/checkUid', methods = ['GET'])
+def checkUid():
+    uid = request.args['uid'].lower()
+
+    accountDb = dbConnect('account')
+
+    record = accountDb.find_one({'uid': uid})
+
+    if record is not None:
+        data = {
+            'isUsed': True
+        }
+    else:
+        data = {
+            'isUsed': False
+        }
+    
+    return jsonify(data)
+
 
 # 登出所有裝置
 def logoutAll(uid):
