@@ -7,13 +7,13 @@ from dbConnection import dbConnect
 from checkToken import checkToken
 from logoutAll import logoutAll
 
-account = Blueprint('account',  __name__)
+account = Blueprint('account', __name__)
 
 timezone = 'Asia/Taipei'
 
-@account.route('/login', methods = ['POST'])
-def login():
 
+@account.route('/login', methods=['POST'])
+def login():
     accountDb = dbConnect('account')
     loginDb = dbConnect('login_record')
 
@@ -28,19 +28,21 @@ def login():
     if tzString is None:
         tzString = 'UTC'
 
-    query = {"uid": uid}
+    query = {'uid': uid}
     record = accountDb.find_one(query, {'_id': 0})
 
     if record['password'] == password:
         token = hashlib.sha1(os.urandom(24)).hexdigest()
 
         logoutAll(uid)
-        loginDb.insert_one({
-            'token_hash': hashlib.md5(token.encode('utf-8')).hexdigest(),
-            'uid': uid,
-            'is_login': True,
-            'timezone': tzString
-        })
+        loginDb.insert_one(
+            {
+                'token_hash': hashlib.md5(token.encode('utf-8')).hexdigest(),
+                'uid': uid,
+                'is_login': True,
+                'timezone': tzString
+            }
+        )
 
         data = {
             'token': token,
@@ -54,15 +56,10 @@ def login():
         return jsonify(data)
 
     else:
-        return jsonify(
-            {
-                "statusCode": 400,
-                "failedMsg": "登入失敗"
-            }
-        )
+        return jsonify({'statusCode': 400, 'failedMsg': '登入失敗'})
 
 
-@account.route('/logout', methods = ['POST'])
+@account.route('/logout', methods=['POST'])
 def logout():
     uid = request.get_json()['uid'].lower()
 
@@ -73,22 +70,18 @@ def logout():
     else:
         logoutAll(uid)
 
-        data = {
-            'state': 'success',
-            'stateMessage': '登出成功'
-        }
+        data = {'state': 'success', 'stateMessage': '登出成功'}
 
     return jsonify(data)
 
-@account.route('/signup', methods = ['POST'])
+
+@account.route('/signup', methods=['POST'])
 def signup():
-    uid =  request.get_json()['uid'].lower()
+    uid = request.get_json()['uid'].lower()
     name = request.get_json()['name']
     email = request.get_json()['email']
     phone = request.get_json()['phone']
-    birthday = datetime.strptime(
-        request.get_json()['birthday'], '%Y-%m-%d'
-    )
+    birthday = datetime.strptime(request.get_json()['birthday'], '%Y-%m-%d')
     password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
 
     insertData = {
@@ -106,19 +99,14 @@ def signup():
 
         print(insertData)
         accountDb.insert_one(insertData)
-        data = {
-            'state': 'success',
-            'stateMessage': '註冊成功'
-        }
+        data = {'state': 'success', 'stateMessage': '註冊成功'}
     except:
-        data = {
-            'state': 'failed',
-            'stateMessage': '註冊失敗'
-        }
+        data = {'state': 'failed', 'stateMessage': '註冊失敗'}
 
     return jsonify(data)
 
-@account.route('/check-uid', methods = ['GET'])
+
+@account.route('/check-uid', methods=['GET'])
 def checkUid():
     uid = request.args['uid'].lower()
 
@@ -127,13 +115,8 @@ def checkUid():
     record = accountDb.find_one({'uid': uid})
 
     if record is not None:
-        data = {
-            'isUsed': True
-        }
+        data = {'isUsed': True}
     else:
-        data = {
-            'isUsed': False
-        }
-    
-    return jsonify(data)
+        data = {'isUsed': False}
 
+    return jsonify(data)
