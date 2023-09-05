@@ -11,7 +11,7 @@ account = Blueprint('account',  __name__)
 def login():
 
     accountDb = dbConnect('account')
-    loginDb = dbConnect('loginRecord')
+    loginDb = dbConnect('login_record')
 
     uid = request.get_json()['uid'].lower()
     password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
@@ -19,16 +19,19 @@ def login():
     query = {"uid": uid}
     record = accountDb.find_one(query, {'_id': 0})
 
+    print({'uid': uid, 'password': password})
+    print(record)
+
     if record['password'] == password:
         print('uid login')
         token = hashlib.sha1(os.urandom(24)).hexdigest()
 
         logoutAll(uid)
         loginDb.insert_one({
-            'tokenHash': hashlib.md5(token.encode('utf-8')).hexdigest(),
+            'token_hash': hashlib.md5(token.encode('utf-8')).hexdigest(),
             'uid': uid,
-            'loginDate': datetime.today().replace(microsecond = 0),
-            'isLogin': True
+            'login_date': datetime.today().replace(microsecond = 0),
+            'is_login': True
         })
 
         data = {
@@ -36,8 +39,8 @@ def login():
             'name': record['name'],
             'birthday': record['birthday'],
             'phone': record['phone'],
-            'memberLevel': record['memberLevel'],
-            'mail': record['mail']
+            'memberLevel': record['member_level'],
+            'email': record['email']
         }
 
         return jsonify(data)
@@ -55,30 +58,30 @@ def login():
 def logout():
     expiresDays = 30
 
-    loginDb = dbConnect('loginRecord')
+    loginDb = dbConnect('login_record')
 
     uid = request.get_json()['uid'].lower()
     tokenHash = hashlib.md5(request.get_json()['token'].encode('utf-8')).hexdigest()
 
     query = {
         'uid': uid,
-        'tokenHash': tokenHash,
+        'token_hash': tokenHash,
     }
 
     record = loginDb.find_one(query, {"_id": 0})
 
     if record is not None:
-        loginDays = (datetime.today()-record['loginDate']).days
+        loginDays = (datetime.today()-record['login_date']).days
 
         if loginDays > expiresDays:
             data = {
                 'state': 'token expires',
                 'stateMessage': '此登入過期',
-                'date': record['loginDate']
+                'date': record['login_date']
             }
             return jsonify(data)
 
-        if record['isLogin'] == True:
+        if record['is_login'] == True:
             logoutAll(uid)
 
             data = {
@@ -136,7 +139,7 @@ def signup():
 
     return jsonify(data)
 
-@account.route('/checkUid', methods = ['GET'])
+@account.route('/check-uid', methods = ['GET'])
 def checkUid():
     uid = request.args['uid'].lower()
 
@@ -158,7 +161,7 @@ def checkUid():
 
 # 登出所有裝置
 def logoutAll(uid):
-    loginDb = dbConnect('loginRecord')
+    loginDb = dbConnect('login_record')
 
-    allLoginData = loginDb.update_many({'uid': uid}, {'$set': {'isLogin': False}})
-    print(uid, allLoginData.modified_count, "documents of loginRecord updated")
+    allLoginData = loginDb.update_many({'uid': uid}, {'$set': {'is_login': False}})
+    print(uid, allLoginData.modified_count, "documents of login_record updated")
