@@ -4,109 +4,84 @@ import hashlib, os
 from datetime import datetime
 
 from dbConnection import dbConnect
+from checkToken import checkToken
+from logoutAll import logoutAll
 
-account = Blueprint('account',  __name__)
+account = Blueprint('account', __name__)
 
-@account.route('/login', methods = ['POST'])
+timezone = 'Asia/Taipei'
+
+
+@account.route('/login', methods=['POST'])
 def login():
-
     accountDb = dbConnect('account')
-    loginDb = dbConnect('loginRecord')
+    loginDb = dbConnect('login_record')
 
     uid = request.get_json()['uid'].lower()
     password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
 
-    query = {"uid": uid}
+    try:
+        tzString = request.get_json()['timezone']
+    except:
+        tzString = 'UTC'
+
+    if tzString is None:
+        tzString = 'UTC'
+
+    query = {'uid': uid}
     record = accountDb.find_one(query, {'_id': 0})
 
     if record['password'] == password:
-        print('uid login')
         token = hashlib.sha1(os.urandom(24)).hexdigest()
 
         logoutAll(uid)
-        loginDb.insert_one({
-            'tokenHash': hashlib.md5(token.encode('utf-8')).hexdigest(),
-            'uid': uid,
-            'loginDate': datetime.today().replace(microsecond = 0),
-            'isLogin': True
-        })
+        loginDb.insert_one(
+            {
+                'token_hash': hashlib.md5(token.encode('utf-8')).hexdigest(),
+                'uid': uid,
+                'is_login': True,
+                'timezone': tzString
+            }
+        )
 
         data = {
             'token': token,
             'name': record['name'],
             'birthday': record['birthday'],
             'phone': record['phone'],
-            'memberLevel': record['memberLevel'],
-            'mail': record['mail']
+            'memberLevel': record['member_level'],
+            'email': record['email']
         }
 
         return jsonify(data)
 
     else:
-        return jsonify(
-            {
-                "statusCode": 400,
-                "failedMsg": "登入失敗"
-            }
-        )
+        return jsonify({'statusCode': 400, 'failedMsg': '登入失敗'})
 
 
-@account.route('/logout', methods = ['POST'])
+@account.route('/logout', methods=['POST'])
 def logout():
-    expiresDays = 30
-
-    loginDb = dbConnect('loginRecord')
-
     uid = request.get_json()['uid'].lower()
-    tokenHash = hashlib.md5(request.get_json()['token'].encode('utf-8')).hexdigest()
 
-    query = {
-        'uid': uid,
-        'tokenHash': tokenHash,
-    }
+    tokenStatus = checkToken(uid, request.get_json()['token'], timezone)
 
-    record = loginDb.find_one(query, {"_id": 0})
-
-    if record is not None:
-        loginDays = (datetime.today()-record['loginDate']).days
-
-        if loginDays > expiresDays:
-            data = {
-                'state': 'token expires',
-                'stateMessage': '此登入過期',
-                'date': record['loginDate']
-            }
-            return jsonify(data)
-
-        if record['isLogin'] == True:
-            logoutAll(uid)
-
-            data = {
-                'state': 'success',
-                'stateMessage': '登出成功'
-            }
-        else:
-            data = {
-                'state': 'token invalid',
-                'stateMessage': '此登入狀態無效'
-            }
+    if tokenStatus is not True:
+        data = tokenStatus
     else:
-        data = {
-                'state': 'none login',
-                'stateMessage': '無此登入記錄'
-            }
+        logoutAll(uid)
+
+        data = {'state': 'success', 'stateMessage': '登出成功'}
 
     return jsonify(data)
 
-@account.route('/signup', methods = ['POST'])
+
+@account.route('/signup', methods=['POST'])
 def signup():
-    uid =  request.get_json()['uid'].lower()
+    uid = request.get_json()['uid'].lower()
     name = request.get_json()['name']
     email = request.get_json()['email']
     phone = request.get_json()['phone']
-    birthday = datetime.strptime(
-        request.get_json()['birthday'], '%Y-%m-%d'
-    )
+    birthday = datetime.strptime(request.get_json()['birthday'], '%Y-%m-%d')
     password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
 
     insertData = {
@@ -124,19 +99,14 @@ def signup():
 
         print(insertData)
         accountDb.insert_one(insertData)
-        data = {
-            'state': 'success',
-            'stateMessage': '註冊成功'
-        }
+        data = {'state': 'success', 'stateMessage': '註冊成功'}
     except:
-        data = {
-            'state': 'failed',
-            'stateMessage': '註冊失敗'
-        }
+        data = {'state': 'failed', 'stateMessage': '註冊失敗'}
 
     return jsonify(data)
 
-@account.route('/checkUid', methods = ['GET'])
+
+@account.route('/check-uid', methods=['GET'])
 def checkUid():
     uid = request.args['uid'].lower()
 
@@ -145,20 +115,8 @@ def checkUid():
     record = accountDb.find_one({'uid': uid})
 
     if record is not None:
-        data = {
-            'isUsed': True
-        }
+        data = {'isUsed': True}
     else:
-        data = {
-            'isUsed': False
-        }
-    
+        data = {'isUsed': False}
+
     return jsonify(data)
-
-
-# 登出所有裝置
-def logoutAll(uid):
-    loginDb = dbConnect('loginRecord')
-
-    allLoginData = loginDb.update_many({'uid': uid}, {'$set': {'isLogin': False}})
-    print(uid, allLoginData.modified_count, "documents of loginRecord updated")
