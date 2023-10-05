@@ -33,11 +33,13 @@ def login():
 
     if record['password'] == password:
         token = hashlib.sha1(os.urandom(24)).hexdigest()
+        token_hash = hashlib.md5(token.encode('utf-8')).hexdigest()
 
+        loginDb.find()
         logoutAll(uid)
         loginDb.insert_one(
             {
-                'token_hash': hashlib.md5(token.encode('utf-8')).hexdigest(),
+                'token_hash': token_hash,
                 'uid': uid,
                 'is_login': True,
                 'timezone': tzString
@@ -61,13 +63,13 @@ def login():
 
 @account.route('/logout', methods=['POST'])
 def logout():
-    uid = request.get_json()['uid'].lower()
+    token = request.get_json()['token']
+    tokenStatus = checkToken(token, timezone)
 
-    tokenStatus = checkToken(uid, request.get_json()['token'], timezone)
-
-    if tokenStatus is not True:
+    if tokenStatus['status'] is not True:
         data = tokenStatus
     else:
+        uid = tokenStatus['uid']
         logoutAll(uid)
 
         data = {'state': 'success', 'stateMessage': '登出成功'}
@@ -97,7 +99,6 @@ def signup():
     try:
         accountDb = dbConnect('account')
 
-        print(insertData)
         accountDb.insert_one(insertData)
         data = {'state': 'success', 'stateMessage': '註冊成功'}
     except:
