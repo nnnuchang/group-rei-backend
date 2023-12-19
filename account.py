@@ -3,9 +3,9 @@ import hashlib, os
 
 from datetime import datetime
 
-from dbConnection import dbConnect
-from checkToken import checkToken
-from logoutAll import logoutAll
+from public.dbConnection import dbConnect
+from public.checkToken import checkToken
+from public.logoutAll import logoutAll
 
 account = Blueprint('account', __name__)
 
@@ -17,11 +17,13 @@ def login():
     accountDb = dbConnect('account')
     loginDb = dbConnect('login_record')
 
-    uid = request.get_json()['uid'].lower()
-    password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
+    requestData = request.get_json()
+
+    uid = requestData['uid'].lower()
+    password = hashlib.md5(requestData['password'].encode('utf-8')).hexdigest()
 
     try:
-        tzString = request.get_json()['timezone']
+        tzString = requestData['timezone']
     except:
         tzString = 'UTC'
 
@@ -63,7 +65,9 @@ def login():
 
 @account.route('/logout', methods=['POST'])
 def logout():
-    token = request.get_json()['token']
+    requestData = request.get_json()
+
+    token = requestData['token']
     tokenStatus = checkToken(token, timezone)
 
     if tokenStatus['status'] is not True:
@@ -79,12 +83,14 @@ def logout():
 
 @account.route('/signup', methods=['POST'])
 def signup():
-    uid = request.get_json()['uid'].lower()
-    name = request.get_json()['name']
-    email = request.get_json()['email']
-    phone = request.get_json()['phone']
-    birthday = datetime.strptime(request.get_json()['birthday'], '%Y-%m-%d')
-    password = hashlib.md5(request.get_json()['password'].encode('utf-8')).hexdigest()
+    requestData = request.get_json()
+
+    uid = requestData['uid'].lower()
+    name = requestData['name']
+    email = requestData['email']
+    phone = requestData['phone']
+    birthday = datetime.strptime(requestData['birthday'], '%Y-%m-%d')
+    password = hashlib.md5(requestData['password'].encode('utf-8')).hexdigest()
 
     insertData = {
         'uid': uid,
@@ -109,7 +115,9 @@ def signup():
 
 @account.route('/check-uid', methods=['GET'])
 def checkUid():
-    uid = request.args['uid'].lower()
+    requestData = request.args
+
+    uid = requestData['uid'].lower()
 
     accountDb = dbConnect('account')
 
@@ -121,3 +129,10 @@ def checkUid():
         data = {'isUsed': False}
 
     return jsonify(data)
+
+@account.route('/forget-password', methods = ['POST'])
+def forgetPassword():
+    requestData = request.get_json()
+    uid = requestData['uid']
+
+    return jsonify({'message': "請至登記信箱收信(開發版本無此功能)"})
