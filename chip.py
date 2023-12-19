@@ -1,31 +1,33 @@
 from bson import ObjectId
 from flask import Blueprint, request, jsonify
 import hashlib, os
-from dbConnection import dbConnect
+from public.dbConnection import dbConnect
 
 chip = Blueprint('chip',  __name__)
 
 
 @chip.route('/info', methods = ['GET'])
 def info():
-    chipId = request.get_json()['chipId']
+    requestData = request.get_json()
+    chipId = requestData['chipId']
 
     chipDb = dbConnect('chip')
-    
+
     record = chipDb.find_one({'chip_id' : chipId},{'_id': 0 ,'item_oid':0})
-    
+
     print(record)
-    
+
     return jsonify(record)
-    
+
 @chip.route('upgrade', methods = ['POST'])
 def upgrade():
-    token = request.get_json()['token']
-    objItemOid = request.get_json()['objItemOid']
-    typeId = request.get_json()['typeId']
-    u = request.get_json()['u']
-    mu = request.get_json()['mu']
-    
+    requestData = request.get_json()
+    token = requestData['token']
+    objItemOid = requestData['objItemOid']
+    typeId = requestData['typeId']
+    u = requestData['u']
+    mu = requestData['mu']
+
     bagDb = dbConnect('bag')
     obj_itemDb = dbConnect('obj_item')
     chipDb = dbConnect('chip')
@@ -33,7 +35,7 @@ def upgrade():
     r = obj_itemDb.find_one({"_id":ObjectId(objItemOid)})
 
     print(r)
-    
+
     if u[0]['UType'] == 'i00010':
         exp = u[0]['UNum']*100
     elif u[0]['UType'] == 'i00011':
@@ -51,14 +53,6 @@ def upgrade():
     data = [cost_mu,afterexp]
     print(data)
     return jsonify(data)
-
-    
-
-
-    
-    
-    
-
 
 
 

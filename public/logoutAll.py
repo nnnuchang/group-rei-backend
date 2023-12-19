@@ -1,4 +1,4 @@
-from dbConnection import dbConnect
+from public.dbConnection import dbConnect
 
 # 登出所有裝置
 def logoutAll(uid):

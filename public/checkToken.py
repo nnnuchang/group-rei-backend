@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytz
 
-from dbConnection import dbConnect
+from public.dbConnection import dbConnect
 
 expiresDays = 30
 
