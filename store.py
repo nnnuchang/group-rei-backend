@@ -12,23 +12,20 @@ def list():
     requestData = request.args
 
     uid = requestData['uid']
-    mu = requestData['mu']
-    konpeito = requestData['konpeito']
 
     accountDb = dbConnect('account')
     commanderDb = dbConnect('commander')
-    goodDb = dbConnect('good')
-    itemsDb = dbConnect('items')
-    transactionRecordDb = dbConnect('transaction_record')
 
     accountOid = accountDb.find_one({'uid': uid})['_id']
     commanderRecord = commanderDb.find_one({'account_oid': accountOid})
 
-    serverKonpeito = commanderRecord['konpeito']
-    serverMu = commanderRecord['mu']
-
     try:
-        if(int(serverKonpeito) != int(konpeito) or int(serverMu) != int(mu)):
+        mu = int(requestData['mu'])
+        konpeito = int(requestData['konpeito'])
+        serverKonpeito = int(commanderRecord['konpeito'])
+        serverMu = int(commanderRecord['mu'])
+
+        if(serverKonpeito != konpeito or serverMu != mu):
             return jsonify({
                 'statusCode': 403,
                 'failedMsg': '數值驗證失敗(konpeito)'
@@ -39,7 +36,9 @@ def list():
                 'failedMsg': '資料型態錯誤(konpeito)'
             })
 
-
+    goodDb = dbConnect('good')
+    itemsDb = dbConnect('items')
+    transactionRecordDb = dbConnect('transaction_record')
 
     goodRecord = goodDb.find()
     bought = transactionRecordDb.aggregate([
@@ -57,14 +56,16 @@ def list():
 
     product = []
     for i in goodRecord:
-        itemId = i['good_id']
+        goodId = i['good_id']
         try:
-            itemName = itemsDb.find_one({'_id': i['item_oid']})['language']['zh_tw']['name']
+            itemsRecord = itemsDb.find_one({'_id': i['item_oid']})
+            itemId = itemsRecord['item_id']
+            itemName = itemsRecord['language']['zh_tw']['name']
         except:
             itemName = 'language error'
-        itemTypeId = i['category']
+        goodTypeId = i['category']
         try:
-            if boughtAmounts[itemId] == None: boughtAmount = int(boughtAmounts[itemId])
+            if boughtAmounts[goodId] == None: boughtAmount = int(boughtAmounts[goodId])
         except:
             boughtAmount = 0
         leftNumber = int(i['amount']) - boughtAmount
@@ -73,9 +74,10 @@ def list():
 
         product.append(
             {
+                'goodId': goodId,
                 'itemId': itemId,
                 'itemName': itemName,
-                'itemTypeId': itemTypeId,
+                'goodTypeId': goodTypeId,
                 'leftNumber': leftNumber,
                 'price': price,
                 'costItem': costItem
@@ -87,6 +89,8 @@ def list():
         "konpeito": serverKonpeito,
         "mu": serverMu
     }
+
+    return jsonify(data)
 
 @store.route('/buy', methods = ['POST'])
 def buy():
