@@ -6,6 +6,7 @@ from public.dbConnection import dbConnect
 store = Blueprint('store', __name__)
 
 timezone = 'Asia/Taipei'
+language = 'zh_tw'
 
 @store.route('/list', methods = ['GET'])
 def list():
@@ -60,7 +61,7 @@ def list():
         try:
             itemsRecord = itemsDb.find_one({'_id': i['item_oid']})
             itemId = itemsRecord['item_id']
-            itemName = itemsRecord['language']['zh_tw']['name']
+            itemName = itemsRecord['language'][language]['name']
         except:
             itemName = 'language error'
         goodTypeId = i['category']

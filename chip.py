@@ -5,19 +5,44 @@ from public.dbConnection import dbConnect
 
 chip = Blueprint('chip',  __name__)
 
+language = 'zh_tw'
+
 
 @chip.route('/info', methods = ['GET'])
 def info():
-    requestData = request.get_json()
+    requestData = request.args
+
     chipId = requestData['chipId']
 
     chipDb = dbConnect('chip')
+    itemsDb = dbConnect('items')
 
-    record = chipDb.find_one({'chip_id' : chipId},{'_id': 0 ,'item_oid':0})
+    chipRecord = chipDb.find_one({'chip_id' : chipId})
+    itemOid = chipRecord['item_oid']
 
-    print(record)
+    itemsRecord = itemsDb.find_one({'_id': itemOid})
 
-    return jsonify(record)
+    level = chipRecord['chip_level_id']
+    itemId = chipRecord['category']
+    name = itemsRecord['language'][language]['name']
+    content = itemsRecord['language'][language]['content']
+    attack = chipRecord['attack']
+    category = chipRecord['category']
+    upgradeCost = chipRecord['upgrade_cost']
+    overlock = chipRecord['overlock']
+    
+    data = {
+        'chipLevel': level,
+        'itemId': itemId,
+        'name': name,
+        'content': content,
+        'attack': attack,
+        'chipCategory': category,
+        'upgradeCost': upgradeCost,
+        'overlock': overlock
+    }
+
+    return jsonify(data)
 
 @chip.route('upgrade', methods = ['POST'])
 def upgrade():
