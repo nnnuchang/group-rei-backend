@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
 
-from bson import ObjectId
+from bson import ObjectId, json_util
 
 from public.dbConnection import dbConnect
 from public.checkToken import checkToken
+
+import json
 
 chip = Blueprint('chip',  __name__)
 
@@ -47,7 +49,7 @@ def info():
 
     return jsonify(data)
 
-@chip.route('upgrade', methods = ['POST'])
+@chip.route('/upgrade', methods = ['POST'])
 def upgrade():
     requestData = request.get_json()
 
@@ -160,6 +162,67 @@ def upgrade():
     }
 
     return jsonify(data)
+
+@chip.route('/list', methods = ['GET'])
+def list():
+    requestData = request.get_json()
+
+    token = requestData['token']
+
+    tokenStatus = checkToken(token, timezone)
+
+    if tokenStatus['status'] is not True:
+        data = tokenStatus
+        return jsonify(data)
+    else:
+        uid = tokenStatus['uid']
+
+    bagDb = dbConnect('bag')
+    objItemDb = dbConnect('obj_item')
+    itemsDb = dbConnect('items')
+    chipDb = dbConnect('chip')
+    accountDb = dbConnect('account')
+
+    accountOid = accountDb.find_one({'uid': uid})['_id']
+    bagObjItems = bagDb.find_one({'account_oid': accountOid})['obj_items']
+
+    objItems = []
+    for i in bagObjItems:
+        objItemRecord =objItemDb.find_one({'_id': i})
+        itemId = objItemRecord['item_id']
+        exp = objItemRecord['exp']
+        attribute = objItemRecord['attribute']
+        
+        itemsRecord = itemsDb.find_one({'item_id': itemId})
+        name = itemsRecord['language'][language]['name']
+        itemOid = itemsRecord['_id']
+        category = itemsRecord['category']
+
+        if category == 'ic0004':
+            chipId = chipDb.find_one({'item_oid': itemOid})['chip_id']
+
+            print(itemOid)
+            print(i)
+            print(chipId)
+            print(itemId)
+            print(name)
+            print(exp)
+            print(attribute)
+            objItems.append(({
+                'objItemOid': i,
+                'chipId': chipId,
+                'itemId': itemId,
+                'name': name,
+                'exp': exp,
+                'attribute': attribute
+            }))
+
+    data = {
+        "objItems": objItems
+    }
+
+    return json.loads(json_util.dumps(data))
+
 
 
 
